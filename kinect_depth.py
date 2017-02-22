@@ -11,7 +11,7 @@ cv2.moveWindow('Depth',500,5)
 cv2.moveWindow('Threshold',1000,5)
 
 erode_kernel = np.ones((3, 3), np.uint8)
-dilate_kernel = np.ones((8, 8), np.uint8)
+dilate_kernel = np.ones((3, 3), np.uint8)
 
 #function to get mouse click and print distance
 def callbackFunc(e,x,y,f,p):
@@ -25,6 +25,7 @@ def get_video():
     video = cv2.cvtColor(video,cv2.COLOR_RGB2BGR)
     return video
 
+#function to filter noise with a mask
 def filter_noise(depth_array, mask, masked_array, row, col):
     row_ratio = 480/row
     column_ratio = 640/col
@@ -32,17 +33,14 @@ def filter_noise(depth_array, mask, masked_array, row, col):
     for i in xrange(col):
         temp_x = 0
         for j in xrange(row):
-            area = masked_array[temp_x:temp_x+row_ratio-1, \
-                   temp_y:temp_y+column_ratio-1]
-            mask[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1] \
-                *= area.mean()
-            depth_array[temp_x:temp_x+row_ratio-1, \
-            temp_y:temp_y+column_ratio-1] += \
-                mask[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1]
+            area = masked_array[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1]
+            mask[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1] *= area.mean()
+            depth_array[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1] += mask[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1]
             temp_x = temp_x + row_ratio
         temp_y = temp_y + column_ratio
     return depth_array
 
+#function to smooth depth map by bilateral filter
 def filter_smooth(depth_array):
     ret, mask = cv2.threshold(depth_array, 10, 255, cv2.THRESH_BINARY_INV)
     mask_1 = mask/255
@@ -67,6 +65,8 @@ while 1:
    
     #get a frame from depth sensor
     depth = get_depth()
+    depth = cv2.erode(depth, erode_kernel, 4)
+    depth = cv2.dilate(depth, dilate_kernel , 4)
 
     #thresholding 
     _,binn = cv2.threshold(depth,20,255,cv2.THRESH_BINARY_INV)
@@ -87,7 +87,7 @@ while 1:
             M = cv2.moments(contours[i])
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
-            cv2.circle(binn, (cx, cy), 6, (0, 255, 0), 3)
+            cv2.circle(frame, (cx, cy), 6, (0, 255, 0), 3)
         cx = cx/len(contours)
         cy = cy/len(contours)
     except:
@@ -95,7 +95,7 @@ while 1:
     
     #draw rectangle and show
     for i in range(len(contours)):
-        if (cv2.contourArea(contours[i])>1):
+        if (cv2.contourArea(contours[i])>500):
                 x,y,w,h = cv2.boundingRect(contours[i])         
                 #cv2.rectangle(binn,(x,y),(x+w,y+h),(0,0,255),2)
                 #cv2.circle(binn, (x+w/2,y+h/2), 1, (0, 255, 0), 3)
@@ -106,7 +106,14 @@ while 1:
                 cv2.drawContours(binn,[box],0,(0,0,255),2)
 
                 #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
-                cv2.drawContours(frame,[box],0,(0,0,255),2)   
+                cv2.drawContours(frame,[box],0,(0,0,255),2)
+                
+                #compute the center of the rectangle
+                x_center = x + w/2
+                y_center = y + h/2
+                a=depth[y_center,x_center]*3
+                cv2.putText(frame,"%.2fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 2 , (0,0,255) , 3 )   
+    
         
     #display RGB image
     cv2.imshow('RGB',frame)
