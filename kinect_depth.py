@@ -2,7 +2,9 @@
 import freenect
 import cv2
 import numpy as np
+import socket
 
+#set up the windows to show images
 cv2.namedWindow("RGB")
 cv2.namedWindow("Depth")
 cv2.namedWindow('Threshold')
@@ -10,8 +12,15 @@ cv2.moveWindow('RGB',5,5)
 cv2.moveWindow('Depth',500,5)
 cv2.moveWindow('Threshold',1000,5)
 
+#global defines
 erode_kernel = np.ones((3, 3), np.uint8)
 dilate_kernel = np.ones((3, 3), np.uint8)
+
+#address setting and socket connect
+TCP_IP = '140.116.164.19'
+TCP_PORT = 5001
+client = socket.socket()
+client.connect((TCP_IP,TCP_PORT))
 
 #function to get mouse click and print distance
 def callbackFunc(e,x,y,f,p):
@@ -114,6 +123,15 @@ while 1:
                 a=depth[y_center,x_center]*3
                 cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
+    #sending images via socket
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),70]
+    result,imgencode = cv2.imencode('.jpg',frame,encode_param)
+    data = np.array(imgencode)
+    stringData_send = data.tostring()
+    client.send(str(len(stringData_send)).ljust(16))
+    print len(stringData_send)  
+    client.send(stringData_send)
+    cv2.waitKey(10)
         
     #display RGB image
     cv2.imshow('RGB',frame)
