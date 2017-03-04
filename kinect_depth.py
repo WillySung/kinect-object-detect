@@ -112,7 +112,7 @@ while 1:
                 x_center = x + w/2
                 y_center = y + h/2
                 a=depth[y_center,x_center]*3
-                cv2.putText(frame,"%.2fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 2 , (0,0,255) , 3 )   
+                cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
         
     #display RGB image
