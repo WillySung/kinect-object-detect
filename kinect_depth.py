@@ -3,6 +3,8 @@ import freenect
 import cv2
 import numpy as np
 import socket
+import time
+from functions import *
 
 #set up the windows to show images
 cv2.namedWindow("RGB")
@@ -12,66 +14,39 @@ cv2.moveWindow('RGB',5,5)
 cv2.moveWindow('Depth',500,5)
 cv2.moveWindow('Threshold',1000,5)
 
-#global defines
+#thresholding global defines
 erode_kernel = np.ones((3, 3), np.uint8)
 dilate_kernel = np.ones((3, 3), np.uint8)
 
+#fps count global defines
+cnt = 0
+fps = 0
+
 #address setting and socket connect
-TCP_IP = '140.116.164.19'
+'''TCP_IP = '140.116.164.19'
 TCP_PORT = 5001
-client = socket.socket()
-client.connect((TCP_IP,TCP_PORT))
+client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+client.connect((TCP_IP,TCP_PORT))'''
 
-#function to get mouse click and print distance
-def callbackFunc(e,x,y,f,p):
-    if e == cv2.EVENT_LBUTTONDOWN:
-       print depth[y,x]*3
+#set mouse click listener
 cv2.setMouseCallback("Depth", callbackFunc, None)
-
-#function to get RGB image from kinect
-def get_video():
-    video = freenect.sync_get_video()[0]
-    video = cv2.cvtColor(video,cv2.COLOR_RGB2BGR)
-    return video
-
-#function to filter noise with a mask
-def filter_noise(depth_array, mask, masked_array, row, col):
-    row_ratio = 480/row
-    column_ratio = 640/col
-    temp_y = 0
-    for i in xrange(col):
-        temp_x = 0
-        for j in xrange(row):
-            area = masked_array[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1]
-            mask[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1] *= area.mean()
-            depth_array[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1] += mask[temp_x:temp_x+row_ratio-1, temp_y:temp_y+column_ratio-1]
-            temp_x = temp_x + row_ratio
-        temp_y = temp_y + column_ratio
-    return depth_array
-
-#function to smooth depth map by bilateral filter
-def filter_smooth(depth_array):
-    ret, mask = cv2.threshold(depth_array, 10, 255, cv2.THRESH_BINARY_INV)
-    mask_1 = mask/255
-    masked_array = depth_array + mask
-    blur = filter_noise(depth_array, mask_1, masked_array, 1, 1)
-    blur = cv2.bilateralFilter(blur, 5, 50, 100)
-    return blur
- 
-#function to get depth image from kinect
-def get_depth():
-    depth = freenect.sync_get_depth(format=freenect.DEPTH_MM)[0]
-    depth = depth/30.0
-    depth = depth.astype(np.uint8)
-    depth = filter_smooth(depth)
-    depth[0:479, 630:639] = depth[0:479, 620:629]
-    return depth
 
 while 1:
     
     #get a frame from RGB camera
     frame = get_video()
-   
+    
+    #compute fps
+    cnt += 1
+    if cnt == 1:
+        start = time.time()
+    if cnt == 10:
+        end = time.time()
+        second = (end - start)
+        fps = 10/second
+        cnt = 0
+    cv2.putText(frame,"FPS : %.2f"%fps , (0,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
+    
     #get a frame from depth sensor
     depth = get_depth()
     depth = cv2.erode(depth, erode_kernel, 4)
@@ -124,15 +99,15 @@ while 1:
                 cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
     #sending images via socket
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),70]
+    '''encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),70]
     result,imgencode = cv2.imencode('.jpg',frame,encode_param)
     data = np.array(imgencode)
     stringData_send = data.tostring()
     client.send(str(len(stringData_send)).ljust(16))
-    print len(stringData_send)  
-    client.send(stringData_send)
-    cv2.waitKey(10)
-        
+    #print len(stringData_send)  
+    client.sendto(stringData_send,(TCP_IP,TCP_PORT))
+    cv2.waitKey(10)'''
+
     #display RGB image
     cv2.imshow('RGB',frame)
     #display depth image
