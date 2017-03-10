@@ -11,8 +11,8 @@ cv2.namedWindow("RGB")
 cv2.namedWindow("Depth")
 cv2.namedWindow('Threshold')
 cv2.moveWindow('RGB',5,5)
-cv2.moveWindow('Depth',500,5)
-cv2.moveWindow('Threshold',1000,5)
+cv2.moveWindow('Depth',600,5)
+cv2.moveWindow('Threshold',1200,5)
 
 #thresholding global defines
 erode_kernel = np.ones((3, 3), np.uint8)
@@ -23,10 +23,10 @@ cnt = 0
 fps = 0
 
 #address setting and socket connect
-'''TCP_IP = '140.116.164.19'
+TCP_IP = '140.116.164.19'
 TCP_PORT = 5001
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-client.connect((TCP_IP,TCP_PORT))'''
+client.connect((TCP_IP,TCP_PORT))
 
 #set mouse click listener
 cv2.setMouseCallback("Depth", callbackFunc, None)
@@ -99,14 +99,14 @@ while 1:
                 cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
     #sending images via socket
-    '''encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),70]
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),70]
     result,imgencode = cv2.imencode('.jpg',frame,encode_param)
     data = np.array(imgencode)
     stringData_send = data.tostring()
     client.send(str(len(stringData_send)).ljust(16))
     #print len(stringData_send)  
     client.sendto(stringData_send,(TCP_IP,TCP_PORT))
-    cv2.waitKey(10)'''
+    cv2.waitKey(10)
 
     #display RGB image
     cv2.imshow('RGB',frame)
