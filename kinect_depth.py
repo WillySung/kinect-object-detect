@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import socket
 import time
+import threading
 from functions import *
 
 #set up the windows to show images
@@ -24,15 +25,41 @@ fps = 0
 
 #address setting and socket connect
 TCP_IP = '140.116.164.19'
-TCP_PORT = 5001
+TCP_PORT1 = 5001
+TCP_PORT2 = 5002
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-client.connect((TCP_IP,TCP_PORT))
-
+client.connect((TCP_IP,TCP_PORT1))
 #set mouse click listener
 cv2.setMouseCallback("Depth", callbackFunc, None)
 
-while 1:
-    
+#function to sending images via socket
+def ImageThread():
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),90]
+    result,imgencode = cv2.imencode('.jpg',frame,encode_param)
+    data = np.array(imgencode)
+    stringData_send = data.tostring()
+    client.send(str(len(stringData_send)).ljust(16))
+    #print len(stringData_send)  
+    client.sendto(stringData_send,(TCP_IP,TCP_PORT1))
+    cv2.waitKey(10)
+
+#function to receive the message from server
+def ChatThread():
+    client.connect((TCP_IP,TCP_PORT2))
+    buf = client.recv(1024)
+    if(buf=='F'):
+        print 'F'
+    elif(buf=='B'):
+        print 'B'
+    elif(buf=='R'):
+        print 'R'
+    elif(buf=='L'):
+        print 'L'
+    else:
+        print 'wrong'
+
+if __name__ == '__main__':
+  while(1):
     #get a frame from RGB camera
     frame = get_video()
     
@@ -98,16 +125,19 @@ while 1:
                 a=depth[y_center,x_center]*3
                 cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
-    #sending images via socket
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),70]
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),90]
     result,imgencode = cv2.imencode('.jpg',frame,encode_param)
     data = np.array(imgencode)
     stringData_send = data.tostring()
     client.send(str(len(stringData_send)).ljust(16))
     #print len(stringData_send)  
-    client.sendto(stringData_send,(TCP_IP,TCP_PORT))
+    client.sendto(stringData_send,(TCP_IP,TCP_PORT1))
     cv2.waitKey(10)
-
+    '''chatThread = threading.Thread(name='chat',target=ChatThread)
+    imageThread = threading.Thread(name='image',target=ImageThread)
+    chatThread.start()
+    imageThread.start()'''
+    
     #display RGB image
     cv2.imshow('RGB',frame)
     #display depth image
@@ -120,4 +150,6 @@ while 1:
     if k == 27:
         break
 
+client.close()
 cv2.destroyAllWindows()
+
