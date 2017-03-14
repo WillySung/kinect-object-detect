@@ -29,24 +29,13 @@ TCP_PORT1 = 5001
 TCP_PORT2 = 5002
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 client.connect((TCP_IP,TCP_PORT1))
+
 #set mouse click listener
 cv2.setMouseCallback("Depth", callbackFunc, None)
 
-#function to sending images via socket
-def ImageThread():
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),90]
-    result,imgencode = cv2.imencode('.jpg',frame,encode_param)
-    data = np.array(imgencode)
-    stringData_send = data.tostring()
-    client.send(str(len(stringData_send)).ljust(16))
-    #print len(stringData_send)  
-    client.sendto(stringData_send,(TCP_IP,TCP_PORT1))
-    cv2.waitKey(10)
-
 #function to receive the message from server
 def ChatThread():
-    client.connect((TCP_IP,TCP_PORT2))
-    buf = client.recv(1024)
+    buf = client.recv(16)
     if(buf=='F'):
         print 'F'
     elif(buf=='B'):
@@ -59,7 +48,7 @@ def ChatThread():
         print 'wrong'
 
 if __name__ == '__main__':
-  while(1):
+  while 1:
     #get a frame from RGB camera
     frame = get_video()
     
@@ -125,7 +114,7 @@ if __name__ == '__main__':
                 a=depth[y_center,x_center]*3
                 cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),90]
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),30]
     result,imgencode = cv2.imencode('.jpg',frame,encode_param)
     data = np.array(imgencode)
     stringData_send = data.tostring()
@@ -133,23 +122,21 @@ if __name__ == '__main__':
     #print len(stringData_send)  
     client.sendto(stringData_send,(TCP_IP,TCP_PORT1))
     cv2.waitKey(10)
-    '''chatThread = threading.Thread(name='chat',target=ChatThread)
-    imageThread = threading.Thread(name='image',target=ImageThread)
+
+    chatThread = threading.Thread(name='chat',target=ChatThread)
     chatThread.start()
-    imageThread.start()'''
-    
+     
     #display RGB image
     cv2.imshow('RGB',frame)
     #display depth image
     cv2.imshow('Depth',depth)
     #display threshold image
     cv2.imshow('Threshold', binn)
- 
+
     # quit program when 'esc' key is pressed
     k = cv2.waitKey(5) & 0xFF
     if k == 27:
         break
-
 client.close()
-cv2.destroyAllWindows()
+cv2.destroyAllWindows()        
 
