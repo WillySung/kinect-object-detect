@@ -25,10 +25,9 @@ fps = 0
 
 #address setting and socket connect
 TCP_IP = '140.116.164.19'
-TCP_PORT1 = 5001
-TCP_PORT2 = 5002
+TCP_PORT = 5001
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-client.connect((TCP_IP,TCP_PORT1))
+client.connect((TCP_IP,TCP_PORT))
 
 #set mouse click listener
 cv2.setMouseCallback("Depth", callbackFunc, None)
