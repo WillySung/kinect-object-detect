@@ -2,11 +2,6 @@ import cv2
 import numpy as np
 import freenect
 
-#function to get mouse click and print distance
-def callbackFunc(e,x,y,f,p):
-    if e == cv2.EVENT_LBUTTONDOWN:
-       print depth[y,x]*3
-
 #function to get RGB image from kinect
 def get_video():
     video = freenect.sync_get_video()[0]
@@ -45,4 +40,5 @@ def get_depth():
     depth = filter_smooth(depth)
     depth[0:479, 630:639] = depth[0:479, 620:629]
     return depth
+
 
