@@ -17,17 +17,22 @@ cv2.moveWindow('Threshold',1200,5)
 
 #thresholding global defines
 erode_kernel = np.ones((3, 3), np.uint8)
-dilate_kernel = np.ones((3, 3), np.uint8)
+dilate_kernel = np.ones((8, 8), np.uint8)
 
 #fps count global defines
 cnt = 0
 fps = 0
 
-#address setting and socket connect
+'''#address setting and socket connect
 TCP_IP = '140.116.164.19'
 TCP_PORT = 5001
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-client.connect((TCP_IP,TCP_PORT))
+client.connect((TCP_IP,TCP_PORT))'''
+
+#function to get mouse click and print distance
+def callbackFunc(e,x,y,f,p):
+    if e == cv2.EVENT_LBUTTONDOWN:
+       print depth[y,x]*3
 
 #set mouse click listener
 cv2.setMouseCallback("Depth", callbackFunc, None)
@@ -69,8 +74,9 @@ if __name__ == '__main__':
 
     #thresholding 
     _,binn = cv2.threshold(depth,20,255,cv2.THRESH_BINARY_INV)
-    binn = cv2.erode(binn, erode_kernel, 4)
     binn = cv2.dilate(binn,dilate_kernel , 4)
+    binn = cv2.erode(binn, erode_kernel, 4)
+    
 
     #find contour
     v1 = 37
@@ -94,7 +100,7 @@ if __name__ == '__main__':
     
     #draw rectangle and show
     for i in range(len(contours)):
-        if (cv2.contourArea(contours[i])>500):
+        if (cv2.contourArea(contours[i])>1200):
                 x,y,w,h = cv2.boundingRect(contours[i])         
                 #cv2.rectangle(binn,(x,y),(x+w,y+h),(0,0,255),2)
                 #cv2.circle(binn, (x+w/2,y+h/2), 1, (0, 255, 0), 3)
@@ -113,17 +119,17 @@ if __name__ == '__main__':
                 a=depth[y_center,x_center]*3
                 cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
     
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),30]
+    '''encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),30]
     result,imgencode = cv2.imencode('.jpg',frame,encode_param)
     data = np.array(imgencode)
     stringData_send = data.tostring()
     client.send(str(len(stringData_send)).ljust(16))
     #print len(stringData_send)  
-    client.sendto(stringData_send,(TCP_IP,TCP_PORT1))
+    client.sendto(stringData_send,(TCP_IP,TCP_PORT))
     cv2.waitKey(10)
 
     chatThread = threading.Thread(name='chat',target=ChatThread)
-    chatThread.start()
+    chatThread.start()'''
      
     #display RGB image
     cv2.imshow('RGB',frame)
