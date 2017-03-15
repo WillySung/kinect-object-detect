@@ -17,14 +17,14 @@ cv2.moveWindow('Threshold',1200,5)
 
 #thresholding global defines
 erode_kernel = np.ones((3, 3), np.uint8)
-dilate_kernel = np.ones((8, 8), np.uint8)
+dilate_kernel = np.ones((6, 6), np.uint8)
 
 #fps count global defines
 cnt = 0
 fps = 0
 
-'''#address setting and socket connect
-TCP_IP = '140.116.164.19'
+#address setting and socket connect
+'''TCP_IP = '140.116.164.19'
 TCP_PORT = 5001
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 client.connect((TCP_IP,TCP_PORT))'''
@@ -77,12 +77,48 @@ if __name__ == '__main__':
     binn = cv2.dilate(binn,dilate_kernel , 4)
     binn = cv2.erode(binn, erode_kernel, 4)
     
-
     #find contour
     v1 = 37
     v2 = 43
     edges = cv2.Canny(binn, v1, v2)
     (contours, _) = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    #defined points to check distance
+    spac=30
+    flag120=[1, 1, 1, 1]
+    flag140=[1, 1, 1, 1]
+    f14=0
+    f12=0
+    f10=0
+    f8=0
+    (rows,cols)=depth.shape # 480 rows and 640 cols
+
+    for i in range(rows/spac): #every 30 to mark a point
+        for j in range(cols/spac):
+            cv2.circle(depth, (spac*j,spac*i), 1, (0, 255, 0), 1)
+            if (depth[spac*i,spac*j]*3 < 50):
+                f8=1
+                cv2.putText(depth,"0",(spac*j,spac*i),cv2.FONT_HERSHEY_PLAIN,1,(0,200,20),2)
+            if (depth[spac*i,spac*j]*3 < 60):
+                f10=1
+                cv2.putText(depth,"1",(spac*j,spac*i),cv2.FONT_HERSHEY_PLAIN,1,(0,200,20),2)
+            if (depth[spac*i,spac*j]*3 < 80):
+                f12=1
+                cv2.putText(depth,"2",(spac*j,spac*i),cv2.FONT_HERSHEY_PLAIN,1,(0,200,20),2)
+                flag120 = RegionCheck(spac*j, flag120)
+            if (depth[spac*i,spac*j]*3 < 120):
+                f14=1
+                cv2.putText(depth,"3",(spac*j,spac*i),cv2.FONT_HERSHEY_PLAIN,1,(0,200,20),1)
+                flag140 = RegionCheck(spac*j, flag140)
+            
+    if(flag120[1:3]==[1, 1] and f12==1):
+        cv2.putText(frame," frwd",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
+    elif(flag120[2:4]==[1, 1] and f12==1):
+        cv2.putText(frame," right",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
+    elif(flag120[0:2]==[1, 1] and f12==1):
+        cv2.putText(frame," left",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
+    elif(f12==1):
+        cv2.putText(frame," back",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
     
     #find center of mass
     '''cx=0
