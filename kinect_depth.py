@@ -5,6 +5,7 @@ import numpy as np
 import socket
 import time
 import threading
+import Queue
 from functions import *
 
 #set up the windows to show images
@@ -24,10 +25,10 @@ cnt = 0
 fps = 0
 
 #address setting and socket connect
-'''TCP_IP = '140.116.164.19'
+TCP_IP = '140.116.164.19'
 TCP_PORT = 5001
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-client.connect((TCP_IP,TCP_PORT))'''
+client.connect((TCP_IP,TCP_PORT))
 
 #function to get mouse click and print distance
 def callbackFunc(e,x,y,f,p):
@@ -51,24 +52,8 @@ def ChatThread():
     else:
         print 'wrong'
 
-if __name__ == '__main__':
-  while 1:
-    #get a frame from RGB camera
-    frame = get_video()
-    
-    #compute fps
-    cnt += 1
-    if cnt == 1:
-        start = time.time()
-    if cnt == 10:
-        end = time.time()
-        second = (end - start)
-        fps = 10/second
-        cnt = 0
-    cv2.putText(frame,"FPS : %.2f"%fps , (0,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
-    
-    #get a frame from depth sensor
-    depth = get_depth()
+def ImageThread(depth,frame):
+    #morphology
     depth = cv2.erode(depth, erode_kernel, 4)
     depth = cv2.dilate(depth, dilate_kernel , 4)
 
@@ -112,68 +97,76 @@ if __name__ == '__main__':
                 flag140 = RegionCheck(spac*j, flag140)
             
     if(flag120[1:3]==[1, 1] and f12==1):
-        cv2.putText(frame," frwd",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
+        cv2.putText(frame," frwd",(480,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
     elif(flag120[2:4]==[1, 1] and f12==1):
-        cv2.putText(frame," right",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
+        cv2.putText(frame," right",(480,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
     elif(flag120[0:2]==[1, 1] and f12==1):
-        cv2.putText(frame," left",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
+        cv2.putText(frame," left",(480,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
     elif(f12==1):
-        cv2.putText(frame," back",(400,90),cv2.FONT_HERSHEY_DUPLEX,1,(2),1)
-    
-    #find center of mass
-    '''cx=0
-    cy=0
-    try:
-        for i in range(len(contours)):
-            M = cv2.moments(contours[i])
-            cx = int(M['m10']/M['m00'])
-            cy = int(M['m01']/M['m00'])
-            cv2.circle(frame, (cx, cy), 6, (0, 255, 0), 3)
-        cx = cx/len(contours)
-        cy = cy/len(contours)
-    except:
-        pass'''
+        cv2.putText(frame," back",(480,50),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
     
     #draw rectangle and show
     for i in range(len(contours)):
         if (cv2.contourArea(contours[i])>1200):
                 x,y,w,h = cv2.boundingRect(contours[i])         
-                #cv2.rectangle(binn,(x,y),(x+w,y+h),(0,0,255),2)
-                #cv2.circle(binn, (x+w/2,y+h/2), 1, (0, 255, 0), 3)
-
                 rect = cv2.minAreaRect(contours[i])               
                 box = cv2.cv.BoxPoints(rect)                    
                 box = np.int0(box)
                 cv2.drawContours(binn,[box],0,(0,0,255),2)
-
-                #cv2.rectangle(frame,(x,y),(x+w,y+h),(0,0,255),2)
                 cv2.drawContours(frame,[box],0,(0,0,255),2)
                 
                 #compute the center of the rectangle
                 x_center = x + w/2
                 y_center = y + h/2
                 a=depth[y_center,x_center]*3
-                cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )   
+                cv2.putText(frame,"%.1fcm" % a , (x,y) , cv2.FONT_HERSHEY_SIMPLEX , 1 , (0,0,255) , 2 )
     
-    '''encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),30]
+    #put frame into queue for main
+    framePool.put(frame)
+    
+    cv2.imshow('Depth',depth)
+    cv2.imshow('Threshold', binn)
+
+if __name__ == '__main__':
+  while 1:
+    #get a frame from RGB camera
+    frame = get_video()
+    
+    #get a frame from depth sensor
+    depth = get_depth()
+
+    #compute fps
+    cnt += 1
+    if cnt == 1:
+        start = time.time()
+    if cnt == 10:
+        end = time.time()
+        second = (end - start)
+        fps = 10/second
+        cnt = 0
+    cv2.putText(frame,"FPS : %.2f"%fps , (0,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
+    
+    #create a queue to get frame from ImageThread
+    framePool = Queue.Queue()
+
+    imageThread = threading.Thread(name='image',target=ImageThread,args=(depth,frame))
+    imageThread.start()
+    chatThread = threading.Thread(name='chat',target=ChatThread)
+    chatThread.start()
+    
+    #get frame from ImageThread
+    frame = framePool.get()
+
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY),30]
     result,imgencode = cv2.imencode('.jpg',frame,encode_param)
     data = np.array(imgencode)
     stringData_send = data.tostring()
-    client.send(str(len(stringData_send)).ljust(16))
-    #print len(stringData_send)  
+    client.send(str(len(stringData_send)).ljust(16)) 
     client.sendto(stringData_send,(TCP_IP,TCP_PORT))
-    cv2.waitKey(10)
+    #cv2.waitKey(10)
 
-    chatThread = threading.Thread(name='chat',target=ChatThread)
-    chatThread.start()'''
-     
-    #display RGB image
     cv2.imshow('RGB',frame)
-    #display depth image
-    cv2.imshow('Depth',depth)
-    #display threshold image
-    cv2.imshow('Threshold', binn)
-
+    
     # quit program when 'esc' key is pressed
     k = cv2.waitKey(5) & 0xFF
     if k == 27:
